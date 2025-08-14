@@ -95,8 +95,8 @@ impl Position {
             (-1, -1),
             (-1, 1),
         ]
-        .iter()
-        .map(|&(x, y)| Translation::from_coordinate(x, y))
+        .into_iter()
+        .map(|(x, y)| Translation::from_coordinate(x, y))
         .map(|translation| self.add_translation(translation))
         .flatten()
         .collect()
@@ -183,8 +183,8 @@ impl State {
                 if next_move
                     .position
                     .all_neighbor()
-                    .iter()
-                    .all(|&pos| self[pos] != Some(last_move.player))
+                    .into_iter()
+                    .all(|pos| self[pos] != Some(last_move.player))
                 {
                     true
                 } else if Translation::from_difference(last_move.position, next_move.position)
@@ -195,8 +195,8 @@ impl State {
                     last_move
                         .position
                         .all_neighbor()
-                        .iter()
-                        .any(|&pos| self[pos].is_none())
+                        .into_iter()
+                        .any(|pos| self[pos].is_none())
                 }
             })
         {
@@ -225,8 +225,8 @@ impl State {
         let last_position = self.last_move.unwrap().position;
 
         [(0, 1), (1, 0), (1, 1), (1, -1)]
-            .iter()
-            .map(|&(x, y)| Translation::from_coordinate(x, y))
+            .into_iter()
+            .map(|(x, y)| Translation::from_coordinate(x, y))
             .any(|translation| {
                 (-3..=3)
                     .into_iter()
@@ -240,25 +240,43 @@ impl State {
             })
     }
 
-    fn check_draw(&self) -> bool {
-        self.last_move.is_some_and(|last_move| {
-            Position::all_position()
-                .iter()
-                .filter(|&&pos| self[pos].is_none())
-                .flat_map(|&pos| pos.all_neighbor())
-                .all(|pos| self[pos] != Some(last_move.player))
-        })
-    }
-
     pub fn fourmation_turn(&self, next_move: &Action) -> Option<NextState> {
         let new_state = self.get_next_state(next_move)?;
 
         if new_state.check_win() {
             Some(NextState::Done(Some(next_move.player)))
-        } else if new_state.check_draw() {
+        } else if new_state.get_next_position().is_empty() {
             Some(NextState::Done(None))
         } else {
             Some(NextState::Cont(new_state))
+        }
+    }
+
+    pub fn get_next_position(&self) -> Vec<Position> {
+        if let Some(last_move) = self.last_move {
+            let near_last: Vec<Position> = last_move
+                .position
+                .all_neighbor()
+                .into_iter()
+                .filter(|&pos| self[pos].is_none())
+                .collect();
+
+            if near_last.is_empty() {
+                Position::all_position()
+                    .into_iter()
+                    .filter(|&pos| {
+                        self[pos].is_none()
+                            && pos
+                                .all_neighbor()
+                                .into_iter()
+                                .any(|near_pos| self[near_pos] == Some(last_move.player))
+                    })
+                    .collect()
+            } else {
+                near_last
+            }
+        } else {
+            Position::all_position()
         }
     }
 }
