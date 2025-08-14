@@ -241,18 +241,15 @@ impl State {
     }
 
     fn check_draw(&self) -> bool {
-        let next_player = self.get_next_player();
-
-        // TODO optimize
-        // naive: try all get_next_state and check all none
-
-        Position::all_position().iter().all(|&pos| {
-            self.get_next_state(&Action {
-                player: next_player,
-                position: pos,
-            })
-            .is_none()
-        })
+        if let Some(last_move) = self.last_move {
+            Position::all_position()
+                .iter()
+                .filter(|&&pos| self[pos].is_none())
+                .flat_map(|&pos| pos.all_neighbor())
+                .all(|pos| self[pos] != Some(last_move.player))
+        } else {
+            false
+        }
     }
 
     pub fn fourmation_turn(&self, next_move: &Action) -> Option<NextState> {
