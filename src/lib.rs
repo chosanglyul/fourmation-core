@@ -68,6 +68,12 @@ pub struct Position {
     y: usize,
 }
 
+impl std::fmt::Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
 impl Position {
     pub fn from_coordinate(x: usize, y: usize) -> Option<Self> {
         if x < MAXX && y < MAXY {

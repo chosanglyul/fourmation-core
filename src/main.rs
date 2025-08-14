@@ -16,6 +16,7 @@ fn main() {
         match game {
             NextState::Cont(ref state) => {
                 println!("{}", state);
+                println!("{:?}", state.get_next_position());
                 if let Some(position) = get_input() {
                     if let Some(next_game) = state.fourmation_turn(&Action {
                         player: state.get_next_player(),
