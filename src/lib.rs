@@ -100,13 +100,13 @@ impl Position {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Action {
-    player: Player,
-    position: Position,
+    pub player: Player,
+    pub position: Position,
 }
 
 pub struct State {
-    board: Vec<Option<Player>>,
-    last_move: Option<Action>,
+    pub board: Vec<Option<Player>>,
+    pub last_move: Option<Action>,
 }
 
 impl std::ops::Index<Position> for State {
@@ -125,14 +125,14 @@ impl State {
         }
     }
 
-    fn get_next_player(&self) -> Player {
+    pub fn get_next_player(&self) -> Player {
         match self.last_move {
             Some(action) => action.player.get_opponent(),
             None => Player::R,
         }
     }
 
-    fn apply_action(&self, next_move: &Action) -> Option<Self> {
+    fn get_next_state(&self, next_move: &Action) -> Option<Self> {
         if self.get_next_player() != next_move.player || self[next_move.position].is_some() {
             None
         } else if self.last_move.is_some_and(|last_move| {
@@ -193,21 +193,24 @@ impl State {
         let next_player = self.get_next_player();
 
         // TODO optimize
-        // naive: try all apply_action and check all none
+        // naive: try all get_next_state and check all none
 
         (0..MAXX)
             .into_iter()
             .map(|x| (0..MAXY).into_iter().map(move |y| (x, y)))
             .flatten()
             .map(|(x, y)| Position::from_coordinate(x, y).unwrap())
-            .all(|pos| self.apply_action(&Action {
-                player: next_player,
-                position: pos,
-            }).is_none())
+            .all(|pos| {
+                self.get_next_state(&Action {
+                    player: next_player,
+                    position: pos,
+                })
+                .is_none()
+            })
     }
 
     pub fn fourmation_turn(&self, next_move: &Action) -> Option<NextState> {
-        let new_state = self.apply_action(next_move)?;
+        let new_state = self.get_next_state(next_move)?;
 
         if new_state.check_win() {
             Some(NextState::Done(Some(next_move.player)))
@@ -230,7 +233,6 @@ mod tests {
 
     #[test]
     fn it_works() {
-        // let result = add(2, 2);
-        // assert_eq!(result, 4);
+        
     }
 }
