@@ -241,15 +241,13 @@ impl State {
     }
 
     fn check_draw(&self) -> bool {
-        if let Some(last_move) = self.last_move {
+        self.last_move.is_some_and(|last_move| {
             Position::all_position()
                 .iter()
                 .filter(|&&pos| self[pos].is_none())
                 .flat_map(|&pos| pos.all_neighbor())
                 .all(|pos| self[pos] != Some(last_move.player))
-        } else {
-            false
-        }
+        })
     }
 
     pub fn fourmation_turn(&self, next_move: &Action) -> Option<NextState> {
