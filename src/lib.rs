@@ -3,18 +3,27 @@ const MAXY: usize = 7;
 const FOUR: usize = 4;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Player { R, B }
+pub enum Player {
+    R,
+    B,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Translation { x: isize, y: isize }
+pub struct Translation {
+    x: isize,
+    y: isize,
+}
 
 impl Translation {
     pub fn from_coordinate(x: isize, y: isize) -> Self {
-        Self {x, y}
+        Self { x, y }
     }
 
     pub fn scalar_multiplication(&self, c: isize) -> Self {
-        Self {x: self.x * c, y: self.y * c}
+        Self {
+            x: self.x * c,
+            y: self.y * c,
+        }
     }
 
     pub fn from_difference(a: Position, b: Position) -> Self {
@@ -36,12 +45,15 @@ impl Translation {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Position { x: usize, y: usize }
+pub struct Position {
+    x: usize,
+    y: usize,
+}
 
 impl Position {
     pub fn from_coordinate(x: usize, y: usize) -> Option<Self> {
         if x < MAXX && y < MAXY {
-            Some(Self {x, y})
+            Some(Self { x, y })
         } else {
             None
         }
@@ -55,7 +67,17 @@ impl Position {
     }
 
     pub fn all_neighbor(&self) -> Vec<Self> {
-        [(0, 1), (1, 0), (1, 1), (1, -1), (0, -1), (-1, 0), (-1, -1), (-1, 1)].iter()
+        [
+            (0, 1),
+            (1, 0),
+            (1, 1),
+            (1, -1),
+            (0, -1),
+            (-1, 0),
+            (-1, -1),
+            (-1, 1),
+        ]
+        .iter()
         .map(|&(x, y)| Translation::from_coordinate(x, y))
         .map(|translation| self.add_translation(translation))
         .flatten()
@@ -89,7 +111,7 @@ impl std::ops::Index<Position> for State {
 impl State {
     pub fn from_empty() -> Self {
         State {
-            board: (0..MAXX*MAXY).into_iter().map(|_| None).collect(),
+            board: (0..MAXX * MAXY).into_iter().map(|_| None).collect(),
             last_move: None,
         }
     }
@@ -100,9 +122,15 @@ impl State {
         } else if self.last_move.is_some_and(|last_move| {
             if last_move.player == next_move.player {
                 true
-            } else if Translation::from_difference(last_move.position, next_move.position).is_unit() {
+            } else if Translation::from_difference(last_move.position, next_move.position).is_unit()
+            {
                 false
-            } else if last_move.position.all_neighbor().iter().any(|&pos| self[pos].is_none()) {
+            } else if last_move
+                .position
+                .all_neighbor()
+                .iter()
+                .any(|&pos| self[pos].is_none())
+            {
                 true
             } else {
                 false
@@ -111,45 +139,42 @@ impl State {
             None
         } else {
             Some(State {
-                board: self.board.iter()
-                .enumerate()
-                .map(|(idx, &player)|
-                    if idx == next_move.position.to_usize() {
-                        Some(next_move.player)
-                    } else {
-                        player
-                    }
-                )
-                .collect(),
+                board: self
+                    .board
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, &player)| {
+                        if idx == next_move.position.to_usize() {
+                            Some(next_move.player)
+                        } else {
+                            player
+                        }
+                    })
+                    .collect(),
                 last_move: Some(*next_move),
             })
         }
     }
-}
 
-pub enum NextState {
-    Done(Option<Player>),
-    Cont(State),
-}
-
-impl NextState {
-    pub fn fourmation_turn(state: &State, next_move: &Action) -> Option<Self> {
-        let new_state = state.apply_action(next_move)?;
+    pub fn fourmation_turn(&self, next_move: &Action) -> Option<NextState> {
+        let new_state = self.apply_action(next_move)?;
         let last_position = new_state.last_move.unwrap().position;
 
-        if [(0, 1), (1, 0), (1, 1), (1, -1)].iter()
-        .map(|&(x, y)| Translation::from_coordinate(x, y))
-        .any(|translation| (-3..=3).into_iter()
-            .map(|c| translation.scalar_multiplication(c))
-            .map(|dir| last_position.add_translation(dir))
-            .flatten()
-            .map(|pos| new_state[pos])
-            .collect::<Vec<_>>()
-            .windows(FOUR)
-            .any(|arr| arr.iter()
-                .all(|&player| player == Some(next_move.player))
-            )
-        ) {
+        if [(0, 1), (1, 0), (1, 1), (1, -1)]
+            .iter()
+            .map(|&(x, y)| Translation::from_coordinate(x, y))
+            .any(|translation| {
+                (-3..=3)
+                    .into_iter()
+                    .map(|c| translation.scalar_multiplication(c))
+                    .map(|dir| last_position.add_translation(dir))
+                    .flatten()
+                    .map(|pos| new_state[pos])
+                    .collect::<Vec<_>>()
+                    .windows(FOUR)
+                    .any(|arr| arr.iter().all(|&player| player == Some(next_move.player)))
+            })
+        {
             Some(NextState::Done(Some(next_move.player)))
         } else {
             // TODO fast check draw
@@ -157,6 +182,11 @@ impl NextState {
             Some(NextState::Cont(new_state))
         }
     }
+}
+
+pub enum NextState {
+    Done(Option<Player>),
+    Cont(State),
 }
 
 #[cfg(test)]
