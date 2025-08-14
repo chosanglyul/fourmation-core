@@ -8,6 +8,15 @@ pub enum Player {
     B,
 }
 
+impl Player {
+    pub fn get_opponent(&self) -> Self {
+        match self {
+            Player::R => Player::B,
+            Player::B => Player::R,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Translation {
     x: isize,
@@ -116,14 +125,18 @@ impl State {
         }
     }
 
-    pub fn apply_action(&self, next_move: &Action) -> Option<Self> {
-        if self[next_move.position].is_some() {
+    fn get_next_player(&self) -> Player {
+        match self.last_move {
+            Some(action) => action.player.get_opponent(),
+            None => Player::R,
+        }
+    }
+
+    fn apply_action(&self, next_move: &Action) -> Option<Self> {
+        if self.get_next_player() != next_move.player || self[next_move.position].is_some() {
             None
         } else if self.last_move.is_some_and(|last_move| {
-            if last_move.player == next_move.player {
-                true
-            } else if Translation::from_difference(last_move.position, next_move.position).is_unit()
-            {
+            if Translation::from_difference(last_move.position, next_move.position).is_unit() {
                 false
             } else if last_move
                 .position
@@ -156,11 +169,11 @@ impl State {
         }
     }
 
-    pub fn fourmation_turn(&self, next_move: &Action) -> Option<NextState> {
-        let new_state = self.apply_action(next_move)?;
-        let last_position = new_state.last_move.unwrap().position;
+    fn check_win(&self) -> bool {
+        let last_player = self.last_move.unwrap().player;
+        let last_position = self.last_move.unwrap().position;
 
-        if [(0, 1), (1, 0), (1, 1), (1, -1)]
+        [(0, 1), (1, 0), (1, 1), (1, -1)]
             .iter()
             .map(|&(x, y)| Translation::from_coordinate(x, y))
             .any(|translation| {
@@ -169,16 +182,38 @@ impl State {
                     .map(|c| translation.scalar_multiplication(c))
                     .map(|dir| last_position.add_translation(dir))
                     .flatten()
-                    .map(|pos| new_state[pos])
+                    .map(|pos| self[pos])
                     .collect::<Vec<_>>()
                     .windows(FOUR)
-                    .any(|arr| arr.iter().all(|&player| player == Some(next_move.player)))
+                    .any(|arr| arr.iter().all(|&player| player == Some(last_player)))
             })
-        {
+    }
+
+    fn check_draw(&self) -> bool {
+        let next_player = self.get_next_player();
+
+        // TODO optimize
+        // naive: try all apply_action and check all none
+
+        (0..MAXX)
+            .into_iter()
+            .map(|x| (0..MAXY).into_iter().map(move |y| (x, y)))
+            .flatten()
+            .map(|(x, y)| Position::from_coordinate(x, y).unwrap())
+            .all(|pos| self.apply_action(&Action {
+                player: next_player,
+                position: pos,
+            }).is_none())
+    }
+
+    pub fn fourmation_turn(&self, next_move: &Action) -> Option<NextState> {
+        let new_state = self.apply_action(next_move)?;
+
+        if new_state.check_win() {
             Some(NextState::Done(Some(next_move.player)))
+        } else if new_state.check_draw() {
+            Some(NextState::Done(None))
         } else {
-            // TODO fast check draw
-            // naive: try all apply_action and check all none
             Some(NextState::Cont(new_state))
         }
     }
