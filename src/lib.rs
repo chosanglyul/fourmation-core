@@ -1,11 +1,20 @@
-const MAXX: usize = 7;
-const MAXY: usize = 7;
-const FOUR: usize = 4;
+pub const MAXX: usize = 7;
+pub const MAXY: usize = 7;
+pub const FOUR: usize = 4;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Player {
     R,
     B,
+}
+
+impl std::fmt::Display for Player {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Player::R => write!(f, "R"),
+            Player::B => write!(f, "B"),
+        }
+    }
 }
 
 impl Player {
@@ -96,6 +105,15 @@ impl Position {
     pub fn to_usize(&self) -> usize {
         self.x * MAXY + self.y
     }
+
+    pub fn all_position() -> Vec<Self> {
+        (0..MAXX)
+            .into_iter()
+            .map(|x| (0..MAXY).into_iter().map(move |y| (x, y)))
+            .flatten()
+            .map(|(x, y)| Position::from_coordinate(x, y).unwrap())
+            .collect()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -109,6 +127,32 @@ pub struct State {
     pub last_move: Option<Action>,
 }
 
+impl std::fmt::Display for State {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for x in 0..MAXX {
+            for y in 0..MAXY {
+                let pos = Position::from_coordinate(x, y).unwrap();
+                match self[pos] {
+                    Some(player) => {
+                        if self
+                            .last_move
+                            .is_some_and(|last_move| last_move.position == pos)
+                        {
+                            write!(f, "{}* ", player)?
+                        } else {
+                            write!(f, "{}. ", player)?
+                        }
+                    }
+                    None => write!(f, ".. ")?,
+                }
+            }
+            writeln!(f)?;
+        }
+
+        Ok(())
+    }
+}
+
 impl std::ops::Index<Position> for State {
     type Output = Option<Player>;
 
@@ -120,7 +164,7 @@ impl std::ops::Index<Position> for State {
 impl State {
     pub fn from_empty() -> Self {
         State {
-            board: (0..MAXX * MAXY).into_iter().map(|_| None).collect(),
+            board: Position::all_position().iter().map(|_| None).collect(),
             last_move: None,
         }
     }
@@ -133,22 +177,29 @@ impl State {
     }
 
     fn get_next_state(&self, next_move: &Action) -> Option<Self> {
-        if self.get_next_player() != next_move.player || self[next_move.position].is_some() {
-            None
-        } else if self.last_move.is_some_and(|last_move| {
-            if Translation::from_difference(last_move.position, next_move.position).is_unit() {
-                false
-            } else if last_move
-                .position
-                .all_neighbor()
-                .iter()
-                .any(|&pos| self[pos].is_none())
-            {
-                true
-            } else {
-                false
-            }
-        }) {
+        if self.get_next_player() != next_move.player
+            || self[next_move.position].is_some()
+            || self.last_move.is_some_and(|last_move| {
+                if next_move
+                    .position
+                    .all_neighbor()
+                    .iter()
+                    .all(|&pos| self[pos] != Some(last_move.player))
+                {
+                    true
+                } else if Translation::from_difference(last_move.position, next_move.position)
+                    .is_unit()
+                {
+                    false
+                } else {
+                    last_move
+                        .position
+                        .all_neighbor()
+                        .iter()
+                        .any(|&pos| self[pos].is_none())
+                }
+            })
+        {
             None
         } else {
             Some(State {
@@ -195,18 +246,13 @@ impl State {
         // TODO optimize
         // naive: try all get_next_state and check all none
 
-        (0..MAXX)
-            .into_iter()
-            .map(|x| (0..MAXY).into_iter().map(move |y| (x, y)))
-            .flatten()
-            .map(|(x, y)| Position::from_coordinate(x, y).unwrap())
-            .all(|pos| {
-                self.get_next_state(&Action {
-                    player: next_player,
-                    position: pos,
-                })
-                .is_none()
+        Position::all_position().iter().all(|&pos| {
+            self.get_next_state(&Action {
+                player: next_player,
+                position: pos,
             })
+            .is_none()
+        })
     }
 
     pub fn fourmation_turn(&self, next_move: &Action) -> Option<NextState> {
@@ -232,7 +278,5 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        
-    }
+    fn it_works() {}
 }

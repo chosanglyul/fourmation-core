@@ -1,4 +1,4 @@
-use fourmation_core::{Position, NextState, State, Action, Player};
+use fourmation_core::*;
 
 fn main() {
     let get_input = || -> Option<Position> {
@@ -15,6 +15,7 @@ fn main() {
     loop {
         match game {
             NextState::Cont(ref state) => {
+                println!("{}", state);
                 if let Some(position) = get_input() {
                     if let Some(next_game) = state.fourmation_turn(&Action {
                         player: state.get_next_player(),
@@ -27,17 +28,14 @@ fn main() {
                 } else {
                     println!("Invalid Input");
                 }
-            },
+            }
             NextState::Done(winner) => {
                 match winner {
-                    Some(player) => match player {
-                        Player::R => println!("R"),
-                        Player::B => println!("B"),
-                    },
+                    Some(player) => println!("{}", player),
                     None => println!("DRAW"),
                 };
-                break
-            },
+                break;
+            }
         }
     }
 }
