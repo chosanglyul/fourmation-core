@@ -1,42 +1,35 @@
 use fourmation_core::*;
 
 fn main() {
-    // let get_input = || -> Option<Position> {
-    //     let mut buffer = String::new();
-    //     std::io::stdin().read_line(&mut buffer).ok()?;
-    //     let mut buf_iter = buffer.split_whitespace();
-    //     let x: usize = buf_iter.next()?.parse().ok()?;
-    //     let y: usize = buf_iter.next()?.parse().ok()?;
-    //     Position::from_coordinate(x, y)
-    // };
+    let get_input = || -> Option<Position> {
+        let mut buffer = String::new();
+        std::io::stdin().read_line(&mut buffer).ok()?;
+        let mut buf_iter = buffer.split_whitespace();
+        let x: u64 = buf_iter.next()?.parse().ok()?;
+        let y: u64 = buf_iter.next()?.parse().ok()?;
+        Some(x * 7 + y)
+    };
 
-    // let mut game = NextState::Cont(State::from_empty());
+    let mut state = State {
+        r_board: Board::new(0),
+        b_board: Board::new(0),
+        previous_action: None,
+    };
 
-    // loop {
-    //     match game {
-    //         NextState::Cont(ref state) => {
-    //             println!("{}", state);
-    //             println!("{:?}", state.get_next_position());
-    //             if let Some(position) = get_input() {
-    //                 if let Some(next_game) = state.fourmation_turn(&Action {
-    //                     player: state.get_next_player(),
-    //                     position: position,
-    //                 }) {
-    //                     game = next_game;
-    //                 } else {
-    //                     println!("Invalid Move");
-    //                 }
-    //             } else {
-    //                 println!("Invalid Input");
-    //             }
-    //         }
-    //         NextState::Done(winner) => {
-    //             match winner {
-    //                 Some(player) => println!("{}", player),
-    //                 None => println!("DRAW"),
-    //             };
-    //             break;
-    //         }
-    //     }
-    // }
+    loop {
+        if let Some(position) = get_input() {
+            if let Some((new_state, is_done)) = state.step(&Action {
+                player: state.player(),
+                position,
+            }) {
+                state = new_state;
+
+                println!("{}", state);
+
+                if is_done {
+                    break;
+                }
+            }
+        }
+    }
 }
