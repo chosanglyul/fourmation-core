@@ -7,7 +7,7 @@ use std::ops::*;
 
 pub type Position = u64;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Board(u64);
 
 impl Board {
@@ -21,38 +21,64 @@ impl Board {
     }
 
     pub fn singleton(position: Position) -> Self {
+        assert!(position < 49, "Position must be smaller than 49");
+
         Board(1 << position)
     }
 
-    pub fn get(&self, index: Position) -> bool {
-        self.0 & (1 << index) != 0
+    pub fn get(&self, position: Position) -> bool {
+        assert!(position < 49, "Position must be smaller than 49");
+
+        self.0 & (1 << position) != 0
     }
 
-    pub fn set(&self, index: Position) -> Self {
-        Board(self.0 | (1 << index))
+    pub fn set(&self, position: Position) -> Self {
+        assert!(position < 49, "Position must be smaller than 49");
+
+        Board(self.0 | (1 << position))
     }
 
-    pub fn up(&self) -> Self {
-        Board(self.0 >> 7)
-    }
-
-    pub fn down(&self) -> Self {
-        Board(self.0 << 7)
-    }
-
-    pub fn left(&self) -> Self {
-        Board((self.0 >> 1) & 0xFDFBF7EFDFBF)
-    }
-
-    pub fn right(&self) -> Self {
+    pub fn east(&self) -> Self {
         Board((self.0 << 1) & 0x1FBF7EFDFBF7E)
     }
 
-    pub fn neighbors(&self) -> Self {
-        let up = self.up();
-        let down = self.down();
+    pub fn north(&self) -> Self {
+        Board(self.0 >> 7)
+    }
 
-        up | down | self.left() | self.right() | up.left() | up.right() | down.left() | down.right()
+    pub fn northeast(&self) -> Self {
+        Board((self.0 >> 6) & 0x1FBF7EFDFBF7E)
+    }
+
+    pub fn northwest(&self) -> Self {
+        Board((self.0 >> 8) & 0xFDFBF7EFDFBF)
+    }
+
+    pub fn south(&self) -> Self {
+        Board(self.0 << 7)
+    }
+
+    pub fn southeast(&self) -> Self {
+        Board((self.0 << 8) & 0x1FBF7EFDFBF7E)
+    }
+
+    pub fn southwest(&self) -> Self {
+        Board((self.0 << 6) & 0xFDFBF7EFDFBF)
+    }
+
+    pub fn west(&self) -> Self {
+        Board((self.0 >> 1) & 0xFDFBF7EFDFBF)
+    }
+
+    pub fn neighbors(&self) -> Self {
+        self.east()
+            | self.north()
+            | self.northeast()
+            | self.northwest()
+            | self.south()
+            | self.southeast()
+            | self.southwest()
+            | self.west()
     }
 }
 
@@ -313,6 +339,28 @@ pub struct State {
     pub previous_action: Option<Action>,
 }
 
+impl fmt::Display for State {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = "".to_owned();
+
+        for i in 0..49 {
+            if self.r_board.get(i) {
+                s.push_str("R ");
+            } else if self.b_board.get(i) {
+                s.push_str("B ");
+            } else {
+                s.push_str("X ");
+            }
+
+            if i % 7 == 6 {
+                s.push('\n');
+            }
+        }
+
+        write!(f, "{}", s)
+    }
+}
+
 impl State {
     pub fn from_empty() -> Self {
         State {
@@ -330,16 +378,16 @@ impl State {
     }
 
     fn is_empty(&self, position: Position) -> bool {
-        self.r_board.get(position) || self.b_board.get(position)
+        !(self.r_board.get(position) || self.b_board.get(position))
     }
 
     // TODO: Change Option to Result
     pub fn step(&self, action: &Action) -> Option<(Self, bool)> {
-        if self.player() != action.player || self.is_empty(action.position) {
+        if self.player() != action.player || !self.is_empty(action.position) {
             return None;
         }
 
-        if !self.previous_action.is_some_and(|previous_action| {
+        if !self.previous_action.is_none_or(|previous_action| {
             Board::singleton(previous_action.position)
                 .neighbors()
                 .get(action.position)
@@ -363,54 +411,46 @@ impl State {
 
     fn is_done(&self) -> bool {
         if let Some(previous_action) = self.previous_action {
-            let last_position = previous_action.position;
+            let last_position = Board::singleton(previous_action.position);
 
-            let (cp_board, op_board) = match previous_action.player {
-                Player::R => (self.r_board, self.b_board),
-                Player::B => (self.b_board, self.r_board),
+            let cp_board = match previous_action.player {
+                Player::R => self.r_board,
+                Player::B => self.b_board,
             };
+
+            let directions = [
+                Board::east,
+                Board::north,
+                Board::northeast,
+                Board::northwest,
+                Board::south,
+                Board::southeast,
+                Board::southwest,
+                Board::west,
+            ];
+
+            for direction in directions {
+                let line = (0..3).fold(last_position, |acc, _| acc | direction(&acc));
+
+                if line & cp_board == line {
+                    return true;
+                }
+            }
+
+            let neighbors = last_position.neighbors();
+
+            if ((neighbors ^ self.r_board ^ self.b_board) & neighbors) == Board(0) {
+                let op_board = match previous_action.player {
+                    Player::R => self.b_board,
+                    Player::B => self.r_board,
+                };
+
+                let neighbors = op_board.neighbors();
+
+                return ((neighbors ^ self.r_board ^ self.b_board) & neighbors) == Board(0);
+            }
         }
 
         false
     }
-
-    // pub fn fourmation_turn(&self, next_move: &Action) -> Option<NextState> {
-    //     let new_state = self.get_next_state(next_move)?;
-
-    //     if new_state.check_win() {
-    //         Some(NextState::Done(Some(next_move.player)))
-    //     } else if new_state.get_next_position().is_empty() {
-    //         Some(NextState::Done(None))
-    //     } else {
-    //         Some(NextState::Cont(new_state))
-    //     }
-    // }
-
-    // pub fn get_next_position(&self) -> Vec<Position> {
-    //     if let Some(previous_action) = self.previous_action {
-    //         let near_last: Vec<Position> = previous_action
-    //             .position
-    //             .all_neighbor()
-    //             .into_iter()
-    //             .filter(|&pos| self[pos].is_none())
-    //             .collect();
-
-    //         if near_last.is_empty() {
-    //             Position::all_position()
-    //                 .into_iter()
-    //                 .filter(|&pos| {
-    //                     self[pos].is_none()
-    //                         && pos
-    //                             .all_neighbor()
-    //                             .into_iter()
-    //                             .any(|near_pos| self[near_pos] == Some(previous_action.player))
-    //                 })
-    //                 .collect()
-    //         } else {
-    //             near_last
-    //         }
-    //     } else {
-    //         Position::all_position()
-    //     }
-    // }
 }
