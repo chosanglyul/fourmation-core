@@ -3,7 +3,7 @@ use std::ops::*;
 
 pub type Position = u64;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Board(u64);
 
 impl Board {
@@ -185,13 +185,13 @@ impl Player {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Action {
     pub player: Player,
     pub position: Position,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct State {
     pub r_board: Board,
     pub b_board: Board,
