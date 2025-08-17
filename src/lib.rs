@@ -151,6 +151,7 @@ impl BitOr<Board> for &Board {
         Board(self.0 | other.0)
     }
 }
+
 impl BitAndAssign for Board {
     #[inline]
     fn bitand_assign(&mut self, other: Board) {
@@ -197,35 +198,10 @@ impl Not for &Board {
     }
 }
 
-impl fmt::Display for Board {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut s = "".to_owned();
-
-        for i in 0..49 {
-            s.push_str(if self.0 & (1 << i) == 0 { "X " } else { "O " });
-
-            if i % 7 == 6 {
-                s.push('\n');
-            }
-        }
-
-        write!(f, "{}", s)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Player {
     R,
     B,
-}
-
-impl fmt::Display for Player {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Player::R => write!(f, "R"),
-            Player::B => write!(f, "B"),
-        }
-    }
 }
 
 impl Player {
