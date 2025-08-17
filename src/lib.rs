@@ -1,7 +1,32 @@
 use std::fmt;
 use std::ops::*;
 
-pub type Position = u64;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Position(u64);
+
+impl Position {
+    pub fn new(value: u64) -> Self {
+        assert!(value < 49, "Position must be smaller than 49");
+
+        Position(value)
+    }
+}
+
+impl Shl<Position> for u64 {
+    type Output = u64;
+
+    fn shl(self, rhs: Position) -> Self::Output {
+        self << rhs.0
+    }
+}
+
+impl Shr<Position> for u64 {
+    type Output = u64;
+
+    fn shr(self, rhs: Position) -> Self::Output {
+        self >> rhs.0
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Board(u64);
@@ -17,14 +42,10 @@ impl Board {
     }
 
     pub fn singleton(position: Position) -> Self {
-        assert!(position < 49, "Position must be smaller than 49");
-
         Board(1 << position)
     }
 
     pub fn get(&self, position: Position) -> bool {
-        assert!(position < 49, "Position must be smaller than 49");
-
         (self.0 >> position) & 1 != 0
     }
 
@@ -203,9 +224,11 @@ impl fmt::Display for State {
         let mut s = "".to_owned();
 
         for i in 0..49 {
-            if self.r_board.get(i) {
+            let p = Position::new(i);
+
+            if self.r_board.get(p) {
                 s.push_str("R ");
-            } else if self.b_board.get(i) {
+            } else if self.b_board.get(p) {
                 s.push_str("B ");
             } else {
                 s.push_str("X ");
