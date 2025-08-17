@@ -152,34 +152,6 @@ impl BitOr<Board> for &Board {
     }
 }
 
-impl BitAndAssign for Board {
-    #[inline]
-    fn bitand_assign(&mut self, other: Board) {
-        self.0 &= other.0;
-    }
-}
-
-impl BitAndAssign<&Board> for Board {
-    #[inline]
-    fn bitand_assign(&mut self, other: &Board) {
-        self.0 &= other.0;
-    }
-}
-
-impl BitOrAssign for Board {
-    #[inline]
-    fn bitor_assign(&mut self, other: Board) {
-        self.0 |= other.0;
-    }
-}
-
-impl BitOrAssign<&Board> for Board {
-    #[inline]
-    fn bitor_assign(&mut self, other: &Board) {
-        self.0 |= other.0;
-    }
-}
-
 impl Not for Board {
     type Output = Board;
 
