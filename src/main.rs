@@ -22,19 +22,22 @@ fn main() {
 
     loop {
         if let Some(position) = get_input() {
-            if let Some((new_state, is_done)) = state.step(&Action {
+            match state.step(&Action {
                 player: state.player(),
                 position,
             }) {
-                state = new_state;
+                Ok((new_state, is_done)) => {
+                    state = new_state;
 
-                println!("{}", state);
+                    println!("{}", state);
 
-                if is_done {
-                    break;
+                    if is_done {
+                        break;
+                    }
                 }
-            } else {
-                println!("Invalid Position");
+                Err(err_msg) => {
+                    println!("{}", err_msg);
+                }
             }
         } else {
             println!("Invalid Input");
