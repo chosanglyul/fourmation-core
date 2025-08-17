@@ -311,20 +311,9 @@ impl State {
             ];
 
             for direction in directions {
-                let possible_line = (1..4).fold(Some(last_position), |acc, _| {
-                    if let Some(curr_acc) = acc {
-                        let next_acc = curr_acc | direction(&curr_acc);
-                        if next_acc == curr_acc {
-                            None
-                        } else {
-                            Some(next_acc)
-                        }
-                    } else {
-                        None
-                    }
-                });
+                let line = (1..4).fold(last_position, |acc, _| acc | direction(&acc));
 
-                if possible_line.is_some_and(|line| line & cp_board == line) {
+                if line.0.count_ones() == 4 && (line & cp_board == line) {
                     return true;
                 }
             }
