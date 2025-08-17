@@ -240,10 +240,17 @@ impl State {
         !(self.b_board | self.r_board)
     }
 
-    // TODO: Change Option to Result
-    pub fn step(&self, action: &Action) -> Option<(Self, bool)> {
-        if self.player() != action.player || !self.empty_board().get(action.position) {
-            return None;
+    pub fn step(&self, action: &Action) -> Result<(Self, bool), String> {
+        if self.player() != action.player {
+            return Err(format!(
+                "Invalid move: it's {:?}'s turn, but the action was made by {:?}.",
+                self.player(),
+                action.player
+            ));
+        }
+
+        if !self.empty_board().get(action.position) {
+            return Err("Invalid move: the position is already occupied.".to_string());
         }
 
         if self.previous_action.is_some_and(|previous_action| {
@@ -260,7 +267,7 @@ impl State {
                 !neighbors.get(action.position)
             }
         }) {
-            return None;
+            return Err("Invalid move: the position is not a valid move.".to_string());
         }
 
         let (r_board, b_board) = match action.player {
@@ -280,7 +287,7 @@ impl State {
             previous_action: Some(*action),
         };
 
-        Some((new_state, new_state.is_done()))
+        Ok((new_state, new_state.is_done()))
     }
 
     fn is_done(&self) -> bool {
