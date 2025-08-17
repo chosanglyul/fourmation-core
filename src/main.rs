@@ -7,7 +7,11 @@ fn main() {
         let mut buf_iter = buffer.split_whitespace();
         let x: u64 = buf_iter.next()?.parse().ok()?;
         let y: u64 = buf_iter.next()?.parse().ok()?;
-        Some(x * 7 + y)
+        if x >= 7 || y >= 7 {
+            None
+        } else {
+            Some(x * 7 + y)
+        }
     };
 
     let mut state = State {
@@ -29,7 +33,11 @@ fn main() {
                 if is_done {
                     break;
                 }
+            } else {
+                println!("Invalid Position");
             }
+        } else {
+            println!("Invalid Input");
         }
     }
 }

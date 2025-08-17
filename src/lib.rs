@@ -1,7 +1,3 @@
-pub const MAXX: usize = 7;
-pub const MAXY: usize = 7;
-pub const FOUR: usize = 4;
-
 use std::fmt;
 use std::ops::*;
 
@@ -29,43 +25,45 @@ impl Board {
     pub fn get(&self, position: Position) -> bool {
         assert!(position < 49, "Position must be smaller than 49");
 
-        self.0 & (1 << position) != 0
+        (self.0 >> position) & 1 != 0
     }
 
-    pub fn set(&self, position: Position) -> Self {
-        assert!(position < 49, "Position must be smaller than 49");
-
-        Board(self.0 | (1 << position))
-    }
-
+    #[inline]
     pub fn east(&self) -> Self {
         Board((self.0 << 1) & 0x1FBF7EFDFBF7E)
     }
 
+    #[inline]
     pub fn north(&self) -> Self {
         Board(self.0 >> 7)
     }
 
+    #[inline]
     pub fn northeast(&self) -> Self {
         Board((self.0 >> 6) & 0x1FBF7EFDFBF7E)
     }
 
+    #[inline]
     pub fn northwest(&self) -> Self {
         Board((self.0 >> 8) & 0xFDFBF7EFDFBF)
     }
 
+    #[inline]
     pub fn south(&self) -> Self {
         Board(self.0 << 7)
     }
 
+    #[inline]
     pub fn southeast(&self) -> Self {
         Board((self.0 << 8) & 0x1FBF7EFDFBF7E)
     }
 
+    #[inline]
     pub fn southwest(&self) -> Self {
         Board((self.0 << 6) & 0xFDFBF7EFDFBF)
     }
 
+    #[inline]
     pub fn west(&self) -> Self {
         Board((self.0 >> 1) & 0xFDFBF7EFDFBF)
     }
@@ -153,43 +151,6 @@ impl BitOr<Board> for &Board {
         Board(self.0 | other.0)
     }
 }
-
-impl BitXor for Board {
-    type Output = Board;
-
-    #[inline]
-    fn bitxor(self, other: Board) -> Board {
-        Board(self.0 ^ other.0)
-    }
-}
-
-impl BitXor for &Board {
-    type Output = Board;
-
-    #[inline]
-    fn bitxor(self, other: &Board) -> Board {
-        Board(self.0 ^ other.0)
-    }
-}
-
-impl BitXor<&Board> for Board {
-    type Output = Board;
-
-    #[inline]
-    fn bitxor(self, other: &Board) -> Board {
-        Board(self.0 ^ other.0)
-    }
-}
-
-impl BitXor<Board> for &Board {
-    type Output = Board;
-
-    #[inline]
-    fn bitxor(self, other: Board) -> Board {
-        Board(self.0 ^ other.0)
-    }
-}
-
 impl BitAndAssign for Board {
     #[inline]
     fn bitand_assign(&mut self, other: Board) {
@@ -215,56 +176,6 @@ impl BitOrAssign<&Board> for Board {
     #[inline]
     fn bitor_assign(&mut self, other: &Board) {
         self.0 |= other.0;
-    }
-}
-
-impl BitXorAssign for Board {
-    #[inline]
-    fn bitxor_assign(&mut self, other: Board) {
-        self.0 ^= other.0;
-    }
-}
-
-impl BitXorAssign<&Board> for Board {
-    #[inline]
-    fn bitxor_assign(&mut self, other: &Board) {
-        self.0 ^= other.0;
-    }
-}
-
-impl Mul for Board {
-    type Output = Board;
-
-    #[inline]
-    fn mul(self, other: Board) -> Board {
-        Board(self.0.wrapping_mul(other.0))
-    }
-}
-
-impl Mul for &Board {
-    type Output = Board;
-
-    #[inline]
-    fn mul(self, other: &Board) -> Board {
-        Board(self.0.wrapping_mul(other.0))
-    }
-}
-
-impl Mul<&Board> for Board {
-    type Output = Board;
-
-    #[inline]
-    fn mul(self, other: &Board) -> Board {
-        Board(self.0.wrapping_mul(other.0))
-    }
-}
-
-impl Mul<Board> for &Board {
-    type Output = Board;
-
-    #[inline]
-    fn mul(self, other: Board) -> Board {
-        Board(self.0.wrapping_mul(other.0))
     }
 }
 
@@ -377,27 +288,42 @@ impl State {
         }
     }
 
-    fn is_empty(&self, position: Position) -> bool {
-        !(self.r_board.get(position) || self.b_board.get(position))
+    fn empty_board(&self) -> Board {
+        !(self.b_board | self.r_board)
     }
 
     // TODO: Change Option to Result
     pub fn step(&self, action: &Action) -> Option<(Self, bool)> {
-        if self.player() != action.player || !self.is_empty(action.position) {
+        if self.player() != action.player || !self.empty_board().get(action.position) {
             return None;
         }
 
-        if !self.previous_action.is_none_or(|previous_action| {
-            Board::singleton(previous_action.position)
-                .neighbors()
-                .get(action.position)
+        if self.previous_action.is_some_and(|previous_action| {
+            let neighbors = Board::singleton(previous_action.position).neighbors();
+
+            if neighbors & !self.empty_board() == neighbors {
+                let cp_board = match previous_action.player {
+                    Player::R => self.r_board,
+                    Player::B => self.b_board,
+                };
+
+                Board::singleton(action.position).neighbors() & cp_board == Board(0)
+            } else {
+                !neighbors.get(action.position)
+            }
         }) {
             return None;
         }
 
         let (r_board, b_board) = match action.player {
-            Player::R => (self.r_board.set(action.position), self.b_board),
-            Player::B => (self.r_board, self.b_board.set(action.position)),
+            Player::R => (
+                self.r_board | Board::singleton(action.position),
+                self.b_board,
+            ),
+            Player::B => (
+                self.r_board,
+                self.b_board | Board::singleton(action.position),
+            ),
         };
 
         let new_state = State {
@@ -430,24 +356,26 @@ impl State {
             ];
 
             for direction in directions {
-                let line = (0..3).fold(last_position, |acc, _| acc | direction(&acc));
+                let possible_line = (1..4).fold(Some(last_position), |acc, _| {
+                    if let Some(curr_acc) = acc {
+                        let next_acc = curr_acc | direction(&curr_acc);
+                        if next_acc == curr_acc {
+                            None
+                        } else {
+                            Some(next_acc)
+                        }
+                    } else {
+                        None
+                    }
+                });
 
-                if line & cp_board == line {
+                if possible_line.is_some_and(|line| line & cp_board == line) {
                     return true;
                 }
             }
 
-            let neighbors = last_position.neighbors();
-
-            if ((neighbors ^ self.r_board ^ self.b_board) & neighbors) == Board(0) {
-                let op_board = match previous_action.player {
-                    Player::R => self.b_board,
-                    Player::B => self.r_board,
-                };
-
-                let neighbors = op_board.neighbors();
-
-                return ((neighbors ^ self.r_board ^ self.b_board) & neighbors) == Board(0);
+            if (self.empty_board() & last_position.neighbors()) == Board(0) {
+                return (self.empty_board() & cp_board.neighbors()) == Board(0);
             }
         }
 
