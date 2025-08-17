@@ -10,7 +10,7 @@ fn main() {
         if x >= 7 || y >= 7 {
             None
         } else {
-            Some(x * 7 + y)
+            Some(Position::new(x * 7 + y))
         }
     };
 
