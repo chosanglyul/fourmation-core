@@ -62,7 +62,7 @@ impl Board {
 
     #[inline]
     pub fn north(&self) -> Self {
-        Board(self.0 >> 7)
+        Board((self.0 >> 7) & 0x1FFFFFFFFFFFF)
     }
 
     #[inline]
@@ -77,7 +77,7 @@ impl Board {
 
     #[inline]
     pub fn south(&self) -> Self {
-        Board(self.0 << 7)
+        Board((self.0 << 7) & 0x1FFFFFFFFFFFF)
     }
 
     #[inline]
