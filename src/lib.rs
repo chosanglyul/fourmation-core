@@ -313,6 +313,38 @@ impl State {
         Ok((new_state, new_state.is_done()))
     }
 
+    fn next_action_board(&self) -> Board {
+        if let Some(previous_action) = self.previous_action {
+            let board_possible =
+                self.empty_board() & Board::singleton(previous_action.position).neighbors();
+
+            if board_possible == Board(0) {
+                let cp_board = match previous_action.player {
+                    Player::R => self.r_board,
+                    Player::B => self.b_board,
+                };
+
+                self.empty_board() & cp_board.neighbors()
+            } else {
+                board_possible
+            }
+        } else {
+            !Board(0)
+        }
+    }
+
+    pub fn next_action(&self) -> Vec<Position> {
+        let mut bits = self.next_action_board().0;
+        let mut result = Vec::with_capacity(bits.count_ones() as usize);
+
+        while bits != 0 {
+            result.push(Position(bits.trailing_zeros() as u64));
+            bits &= bits - 1;
+        }
+
+        result
+    }
+
     fn is_done(&self) -> bool {
         if let Some(previous_action) = self.previous_action {
             let last_position = Board::singleton(previous_action.position);
@@ -341,11 +373,9 @@ impl State {
                 }
             }
 
-            if (self.empty_board() & last_position.neighbors()) == Board(0) {
-                return (self.empty_board() & cp_board.neighbors()) == Board(0);
-            }
+            self.next_action_board() == Board(0)
+        } else {
+            false
         }
-
-        false
     }
 }
