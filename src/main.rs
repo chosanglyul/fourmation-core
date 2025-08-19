@@ -31,6 +31,8 @@ fn main() {
 
                     println!("{}", state);
 
+                    println!("{:?}", state.next_action());
+
                     if is_done {
                         break;
                     }

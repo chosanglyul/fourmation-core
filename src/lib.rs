@@ -1,7 +1,7 @@
 use std::fmt;
 use std::ops::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Position(u64);
 
 impl Position {
@@ -9,6 +9,12 @@ impl Position {
         assert!(value < 49, "Position must be smaller than 49");
 
         Position(value)
+    }
+}
+
+impl fmt::Debug for Position {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({}, {})", self.0 / 7, self.0 % 7)
     }
 }
 
