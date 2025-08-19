@@ -178,7 +178,7 @@ impl Not for Board {
 
     #[inline]
     fn not(self) -> Board {
-        Board(!self.0)
+        Board(self.0 ^ 0x1FFFFFFFFFFFF)
     }
 }
 
@@ -187,7 +187,7 @@ impl Not for &Board {
 
     #[inline]
     fn not(self) -> Board {
-        Board(!self.0)
+        Board(self.0 ^ 0x1FFFFFFFFFFFF)
     }
 }
 
