@@ -47,6 +47,10 @@ impl Board {
         Board(value)
     }
 
+    pub fn to_u64(&self) -> u64 {
+        self.0
+    }
+
     pub fn singleton(position: Position) -> Self {
         Board(1 << position)
     }
@@ -265,8 +269,15 @@ impl State {
         }
     }
 
-    fn empty_board(&self) -> Board {
+    pub fn empty_board(&self) -> Board {
         !(self.b_board | self.r_board)
+    }
+
+    pub fn player_board(&self, player: Player) -> Board {
+        match player {
+            Player::R => self.r_board,
+            Player::B => self.b_board,
+        }
     }
 
     pub fn step(&self, action: &Action) -> Result<(Self, bool), String> {
@@ -286,12 +297,9 @@ impl State {
             let neighbors = Board::singleton(previous_action.position).neighbors();
 
             if neighbors & !self.empty_board() == neighbors {
-                let cp_board = match previous_action.player {
-                    Player::R => self.r_board,
-                    Player::B => self.b_board,
-                };
-
-                Board::singleton(action.position).neighbors() & cp_board == Board(0)
+                Board::singleton(action.position).neighbors()
+                    & self.player_board(previous_action.player)
+                    == Board(0)
             } else {
                 !neighbors.get(action.position)
             }
@@ -325,12 +333,7 @@ impl State {
                 self.empty_board() & Board::singleton(previous_action.position).neighbors();
 
             if board_possible == Board(0) {
-                let cp_board = match previous_action.player {
-                    Player::R => self.r_board,
-                    Player::B => self.b_board,
-                };
-
-                self.empty_board() & cp_board.neighbors()
+                self.empty_board() & self.player_board(previous_action.player).neighbors()
             } else {
                 board_possible
             }
@@ -340,7 +343,7 @@ impl State {
     }
 
     pub fn next_action(&self) -> Vec<Position> {
-        let mut bits = self.next_action_board().0;
+        let mut bits = self.next_action_board().to_u64();
         let mut result = Vec::with_capacity(bits.count_ones() as usize);
 
         while bits != 0 {
@@ -353,14 +356,7 @@ impl State {
 
     fn is_done(&self) -> bool {
         if let Some(previous_action) = self.previous_action {
-            let last_position = Board::singleton(previous_action.position);
-
-            let cp_board = match previous_action.player {
-                Player::R => self.r_board,
-                Player::B => self.b_board,
-            };
-
-            let directions = [
+            [
                 Board::east,
                 Board::north,
                 Board::northeast,
@@ -369,17 +365,16 @@ impl State {
                 Board::southeast,
                 Board::southwest,
                 Board::west,
-            ];
-
-            for direction in directions {
-                let line = (1..4).fold(last_position, |acc, _| acc | direction(&acc));
-
-                if line.0.count_ones() == 4 && (line & cp_board == line) {
-                    return true;
-                }
-            }
-
-            self.next_action_board() == Board(0)
+            ]
+            .into_iter()
+            .any(|direction| {
+                std::iter::successors(Some(self.player_board(previous_action.player)), |b| {
+                    Some(direction(b))
+                })
+                .take(4)
+                .fold(!Board(0), |acc, board| acc & board)
+                    != Board(0)
+            }) || self.next_action_board() == Board(0)
         } else {
             false
         }
