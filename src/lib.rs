@@ -1,7 +1,7 @@
 use std::fmt;
 use std::ops::*;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Position(u64);
 
 impl Position {
@@ -34,7 +34,7 @@ impl Shr<Position> for u64 {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Board(u64);
 
 impl Board {
@@ -183,6 +183,42 @@ impl BitOr<Board> for &Board {
     }
 }
 
+impl BitXor for Board {
+    type Output = Board;
+
+    #[inline]
+    fn bitxor(self, other: Board) -> Board {
+        Board(self.0 ^ other.0)
+    }
+}
+
+impl BitXor for &Board {
+    type Output = Board;
+
+    #[inline]
+    fn bitxor(self, other: &Board) -> Board {
+        Board(self.0 ^ other.0)
+    }
+}
+
+impl BitXor<&Board> for Board {
+    type Output = Board;
+
+    #[inline]
+    fn bitxor(self, other: &Board) -> Board {
+        Board(self.0 ^ other.0)
+    }
+}
+
+impl BitXor<Board> for &Board {
+    type Output = Board;
+
+    #[inline]
+    fn bitxor(self, other: Board) -> Board {
+        Board(self.0 ^ other.0)
+    }
+}
+
 impl Not for Board {
     type Output = Board;
 
@@ -201,7 +237,7 @@ impl Not for &Board {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Player {
     R,
     B,
@@ -216,13 +252,13 @@ impl Player {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Action {
     pub player: Player,
     pub position: Position,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct State {
     pub r_board: Board,
     pub b_board: Board,
